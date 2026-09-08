@@ -1827,6 +1827,53 @@ static void load_ntdll(void)
 
 
 /***********************************************************************
+ *           map_apiset_file
+ */
+static NTSTATUS map_apiset_file( HANDLE handle, API_SET_NAMESPACE **map_out )
+{
+    const IMAGE_NT_HEADERS *nt;
+    const IMAGE_SECTION_HEADER *sec;
+    API_SET_NAMESPACE *map;
+    OBJECT_ATTRIBUTES attr;
+    UNICODE_STRING str;
+    unsigned int status;
+    HANDLE mapping;
+    SIZE_T size;
+    void *ptr;
+    UINT i;
+
+    status = NtCreateSection( &mapping, STANDARD_RIGHTS_REQUIRED | SECTION_QUERY | SECTION_MAP_READ,
+                              NULL, NULL, PAGE_READONLY, SEC_COMMIT, handle );
+    NtClose( handle );
+    if (status) return status;
+
+    status = map_section( mapping, &ptr, &size, PAGE_READONLY );
+    NtClose( mapping );
+    if (status) return status;
+
+    nt = get_rva( ptr, ((IMAGE_DOS_HEADER *)ptr)->e_lfanew );
+    sec = IMAGE_FIRST_SECTION( nt );
+
+    for (i = 0; i < nt->FileHeader.NumberOfSections; i++, sec++)
+    {
+        if (memcmp( (char *)sec->Name, ".apiset", 8 )) continue;
+        map = (API_SET_NAMESPACE *)((char *)ptr + sec->PointerToRawData);
+        if (sec->PointerToRawData < size &&
+            size - sec->PointerToRawData >= sec->Misc.VirtualSize &&
+            map->Version == 6 &&
+            map->Size <= sec->Misc.VirtualSize)
+        {
+            *map_out = map;
+            return STATUS_SUCCESS;
+        }
+        break;
+    }
+    NtUnmapViewOfSection( NtCurrentProcess(), ptr );
+    return STATUS_APISET_NOT_PRESENT;
+}
+
+
+/***********************************************************************
  *           load_apiset_dll
  */
 static void load_apiset_dll(void)
@@ -1835,63 +1882,56 @@ static void load_apiset_dll(void)
                            's','y','s','t','e','m','3','2','\\',
                            'a','p','i','s','e','t','s','c','h','e','m','a','.','d','l','l',0};
     const char *pe_dir = get_pe_dir( current_machine );
-    const IMAGE_NT_HEADERS *nt;
-    const IMAGE_SECTION_HEADER *sec;
     API_SET_NAMESPACE *map;
     OBJECT_ATTRIBUTES attr;
     UNICODE_STRING str;
-    unsigned int status;
-    HANDLE handle, mapping;
-    SIZE_T size;
+    unsigned int status = STATUS_APISET_NOT_PRESENT;
+    HANDLE handle;
     char *name = NULL;
-    void *ptr;
-    UINT i;
+    char **candidates = NULL;
+    unsigned int i, count = 0;
 
     init_unicode_string( &str, path );
     InitializeObjectAttributes( &attr, &str, 0, 0, NULL );
 
-    if (build_dir) asprintf( &name, "%s/dlls/apisetschema%s/apisetschema.dll", build_dir, pe_dir );
-    else asprintf( &name, "%s%s/apisetschema.dll", dll_dir, pe_dir );
-    status = open_unix_file( &handle, name, GENERIC_READ | SYNCHRONIZE, &attr, 0,
-                             FILE_SHARE_READ | FILE_SHARE_DELETE, FILE_OPEN,
-                             FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0 );
-    free( name );
-
-    if (!status)
+    if (build_dir)
     {
-        status = NtCreateSection( &mapping, STANDARD_RIGHTS_REQUIRED | SECTION_QUERY | SECTION_MAP_READ,
-                                  NULL, NULL, PAGE_READONLY, SEC_COMMIT, handle );
-        NtClose( handle );
+        candidates = realloc( candidates, (count + 1) * sizeof(*candidates) );
+        asprintf( &candidates[count++], "%s/dlls/apisetschema%s/apisetschema.dll", build_dir, pe_dir );
     }
-    if (!status)
+    if (dll_dir)
     {
-        status = map_section( mapping, &ptr, &size, PAGE_READONLY );
-        NtClose( mapping );
+        candidates = realloc( candidates, (count + 1) * sizeof(*candidates) );
+        asprintf( &candidates[count++], "%s%s/apisetschema.dll", dll_dir, pe_dir );
     }
-    if (!status)
+    for (i = 0; dll_paths && dll_paths[i]; i++)
     {
-        nt = get_rva( ptr, ((IMAGE_DOS_HEADER *)ptr)->e_lfanew );
-        sec = IMAGE_FIRST_SECTION( nt );
+        candidates = realloc( candidates, (count + 1) * sizeof(*candidates) );
+        asprintf( &candidates[count++], "%s%s/apisetschema.dll", dll_paths[i], pe_dir );
+    }
 
-        for (i = 0; i < nt->FileHeader.NumberOfSections; i++, sec++)
+    for (i = 0; i < count; i++)
+    {
+        status = open_unix_file( &handle, candidates[i], GENERIC_READ | SYNCHRONIZE, &attr, 0,
+                                 FILE_SHARE_READ | FILE_SHARE_DELETE, FILE_OPEN,
+                                 FILE_SYNCHRONOUS_IO_NONALERT | FILE_NON_DIRECTORY_FILE, NULL, 0 );
+        if (!status)
         {
-            if (memcmp( (char *)sec->Name, ".apiset", 8 )) continue;
-            map = (API_SET_NAMESPACE *)((char *)ptr + sec->PointerToRawData);
-            if (sec->PointerToRawData < size &&
-                size - sec->PointerToRawData >= sec->Misc.VirtualSize &&
-                map->Version == 6 &&
-                map->Size <= sec->Misc.VirtualSize)
+            status = map_apiset_file( handle, &map );
+            if (!status)
             {
                 peb->ApiSetMap = map;
                 if (wow_peb) wow_peb->ApiSetMap = PtrToUlong(map);
-                TRACE( "loaded %s apiset at %p\n", debugstr_w(path), map );
+                TRACE( "loaded %s apiset at %p from %s\n", debugstr_w(path), map, debugstr_a(candidates[i]) );
+                for (i = 0; i < count; i++) free( candidates[i] );
+                free( candidates );
                 return;
             }
-            break;
         }
-        NtUnmapViewOfSection( NtCurrentProcess(), ptr );
-        status = STATUS_APISET_NOT_PRESENT;
     }
+
+    for (i = 0; i < count; i++) free( candidates[i] );
+    free( candidates );
     ERR( "failed to load apiset: %x\n", status );
 }
 

@@ -1669,11 +1669,24 @@ static JuiceKeyMap JuiceMapHIDUsage(NSUInteger usage)
  [self append:[NSString stringWithFormat:@"PREFIX_RUNTIME_LINKS count=%lu system32=%@\n",
   (unsigned long)linkedModules,system32]];
 }
--(NSArray *)environment
+-(NSArray *)environmentForExe:(NSString *)exePath
 {
  NSString *b=[self.grape stringByAppendingPathComponent:@"build/wine-ios"];
  NSString *peRoot=[self.grape stringByAppendingPathComponent:@"runtime/lib/wine"];
  NSString *caBundle=[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Libraries/ca-certificates.pem"];
+ NSString *exeDir=exePath.length?[exePath stringByDeletingLastPathComponent]:nil;
+ NSMutableString *wineDllPath=[NSMutableString stringWithFormat:@"%@:%@:%@:%@:%@:%@:%@:%@:%@:%@",
+  peRoot,[JuiceDataRoot() stringByAppendingPathComponent:@"native"],
+  [b stringByAppendingPathComponent:@"dlls/apisetschema"],
+  [b stringByAppendingPathComponent:@"dlls/ucrtbase"],
+  [b stringByAppendingPathComponent:@"dlls/crypt32"],
+  [b stringByAppendingPathComponent:@"dlls/dnsapi"],
+  [b stringByAppendingPathComponent:@"dlls/secur32"],
+  [b stringByAppendingPathComponent:@"dlls/wineios.drv"],
+  [b stringByAppendingPathComponent:@"dlls/winevulkan"],
+  [b stringByAppendingPathComponent:@"dlls/win32u"],
+  [b stringByAppendingPathComponent:@"dlls/ws2_32"]];
+ if(exeDir.length)[wineDllPath appendFormat:@":%@",exeDir];
  NSMutableArray *variables=[NSMutableArray arrayWithArray:@[
   [@"HOME=" stringByAppendingString:NSHomeDirectory()],
   [@"TMPDIR=" stringByAppendingString:NSTemporaryDirectory()],
@@ -1681,7 +1694,7 @@ static JuiceKeyMap JuiceMapHIDUsage(NSUInteger usage)
   [@"WINELOADER=" stringByAppendingString:[self.grape stringByAppendingPathComponent:@"tools/grape-nested-wrapper"]],
   @"WINELOADERNOEXEC=1",
   [@"WINESERVER=" stringByAppendingString:[b stringByAppendingPathComponent:@"server/wineserver"]],
-  [@"WINEDLLPATH=" stringByAppendingString:[NSString stringWithFormat:@"%@:%@:%@:%@:%@:%@:%@:%@:%@",peRoot,[JuiceDataRoot() stringByAppendingPathComponent:@"native"],[b stringByAppendingPathComponent:@"dlls/crypt32"],[b stringByAppendingPathComponent:@"dlls/dnsapi"],[b stringByAppendingPathComponent:@"dlls/secur32"],[b stringByAppendingPathComponent:@"dlls/wineios.drv"],[b stringByAppendingPathComponent:@"dlls/winevulkan"],[b stringByAppendingPathComponent:@"dlls/win32u"],[b stringByAppendingPathComponent:@"dlls/ws2_32"]]],
+  [@"WINEDLLPATH=" stringByAppendingString:wineDllPath],
   @"DYLD_LIBRARY_PATH=/var/jb/usr/lib",
   [@"JUICE_CA_BUNDLE=" stringByAppendingString:caBundle],
   [@"SSL_CERT_FILE=" stringByAppendingString:caBundle],
@@ -1695,10 +1708,16 @@ static JuiceKeyMap JuiceMapHIDUsage(NSUInteger usage)
   @"WINE_D3D_CONFIG=renderer=vulkan",
   @"WINEARCH=win64",@"PATH=/usr/bin:/bin",@"LANG=C"
  ]];
+ if(exeDir.length)
+ {
+  [variables addObject:[@"WINEPATH=" stringByAppendingString:exeDir]];
+  [variables addObject:[@"JUICE_APP_DLL_DIR=" stringByAppendingString:exeDir]];
+ }
  if(self.usingX64)[variables addObjectsFromArray:@[@"HODLL64=libarm64ecfex.dll",@"JUICE_EXPERIMENTAL_X64=1"]];
  if(self.usingWin32)[variables addObjectsFromArray:@[@"HODLL=libwow64fex.dll",@"JUICE_EXPERIMENTAL_WIN32=1"]];
  return variables;
 }
+-(NSArray *)environment{return [self environmentForExe:nil];}
 -(NSString *)resolveExe{NSString *e=self.exeField.text;if([e containsString:@"/"])return e;return [[self.grape stringByAppendingPathComponent:@"runtime/lib/wine/aarch64-windows"]stringByAppendingPathComponent:e];}
 -(void)launchTapped
 {
@@ -1711,7 +1730,7 @@ static JuiceKeyMap JuiceMapHIDUsage(NSUInteger usage)
  NSString *server=[build stringByAppendingPathComponent:@"server/wineserver"];
  NSString *tracer=[self.grape stringByAppendingPathComponent:@"tools/grape-trace-parent"];
  NSString *exe=[self resolveExe];
- NSArray *environment=[self environment];
+ NSArray *environment=[self environmentForExe:exe];
  char **env=CopyStrings(environment);
 
  char **serverArgv=CopyStrings(@[server,@"-f"]);

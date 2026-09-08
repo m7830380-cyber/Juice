@@ -57,15 +57,13 @@ jobs:
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
           df -h
-      - name: Build unsigned tipa and ipa
+      - name: Build unsigned tipa
         run: make unsigned-ipa
-      - name: Upload unsigned IPA artifacts
+      - name: Upload unsigned TIPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Juice-unsigned-ipa
+          name: Juice-unsigned-tipa
           path: |
-            dist/Juice-*-unsigned.ipa
-            dist/Juice-*-unsigned.ipa.sha256
             dist/Juice-*-unsigned.tipa
             dist/Juice-*-unsigned.tipa.sha256
           if-no-files-found: error

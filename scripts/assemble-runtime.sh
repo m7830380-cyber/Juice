@@ -111,6 +111,37 @@ for target in "${pe_targets[@]}"; do
   cp "$module" "$destination"
 done
 
+# ntdll loads apisetschema.dll from the Wine build-tree layout before ordinary
+# module lookup is available. Mirror the Grape-X64 staging here so native Grape
+# resolves api-ms-win-crt-* and other API-set imports on first launch.
+stage_build_tree_pe() {
+  local target="$1"
+  local module="$PEBUILD/$target"
+  local dll_name component arch_dir
+  dll_name="$(basename "$target")"
+  component="$(basename "$(dirname "$(dirname "$target")")")"
+  arch_dir="$(basename "$(dirname "$target")")"
+  test -s "$module" || { echo "Missing build-tree PE module: $target" >&2; exit 3; }
+  mkdir -p "$GRAPE/build/wine-ios/dlls/$component/$arch_dir"
+  cp "$module" "$GRAPE/build/wine-ios/dlls/$component/$arch_dir/$dll_name"
+}
+
+for build_tree_target in \
+  dlls/apisetschema/aarch64-windows/apisetschema.dll \
+  dlls/ucrtbase/aarch64-windows/ucrtbase.dll \
+  dlls/msvcp140/aarch64-windows/msvcp140.dll \
+  dlls/msvcp140_1/aarch64-windows/msvcp140_1.dll \
+  dlls/msvcp140_2/aarch64-windows/msvcp140_2.dll \
+  dlls/vcruntime140/aarch64-windows/vcruntime140.dll \
+  dlls/vcruntime140_1/aarch64-windows/vcruntime140_1.dll \
+  dlls/concrt140/aarch64-windows/concrt140.dll \
+  dlls/dbghelp/aarch64-windows/dbghelp.dll \
+  dlls/dwmapi/aarch64-windows/dwmapi.dll
+do
+  stage_build_tree_pe "$build_tree_target"
+done
+echo "JUICE_BUILD_TREE_PE_READY apisetschema=$GRAPE/build/wine-ios/dlls/apisetschema/aarch64-windows/apisetschema.dll"
+
 WINEVULKAN_JSON="$PEBUILD/dlls/winevulkan/winevulkan.json"
 if test ! -s "$WINEVULKAN_JSON"; then
   # winevulkan.json is compiled into winevulkan.dll as a resource, so the PE

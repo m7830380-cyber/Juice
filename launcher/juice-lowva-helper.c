@@ -54,6 +54,43 @@ typedef uint64_t (*kread_ptr_fn)(uint64_t);
 typedef uint64_t (*kread64_fn)(uint64_t);
 typedef int (*kwrite64_fn)(uint64_t, uint64_t);
 
+static void *open_jailbreak_library(void)
+{
+    char jb_paths[3][512];
+    const char *paths[10];
+    int n = 0, i;
+    void *lib;
+    const char *override = getenv("JUICE_JAILBREAK_LIB");
+    const char *jbroot = getenv("JBROOT");
+
+    if (override && override[0]) paths[n++] = override;
+    if (jbroot && jbroot[0])
+    {
+        snprintf(jb_paths[0], sizeof(jb_paths[0]), "%s/usr/lib/libjailbreak.dylib", jbroot);
+        snprintf(jb_paths[1], sizeof(jb_paths[1]), "%s/basebin/libjailbreak.dylib", jbroot);
+        snprintf(jb_paths[2], sizeof(jb_paths[2]), "%s/lib/libjailbreak.dylib", jbroot);
+        paths[n++] = jb_paths[0];
+        paths[n++] = jb_paths[1];
+        paths[n++] = jb_paths[2];
+    }
+    paths[n++] = "/var/jb/usr/lib/libjailbreak.dylib";
+    paths[n++] = "/var/jb/basebin/libjailbreak.dylib";
+    paths[n++] = "/var/jb/lib/libjailbreak.dylib";
+
+    for (i = 0; i < n; i++)
+    {
+        lib = dlopen(paths[i], RTLD_LAZY | RTLD_LOCAL);
+        if (lib)
+        {
+            fprintf(stderr, "JUICE_LOWVA_HELPER_JB path=%s\n", paths[i]);
+            return lib;
+        }
+        fprintf(stderr, "JUICE_LOWVA_HELPER_JB_TRY path=%s error=%s\n",
+                paths[i], dlerror() ?: "unknown");
+    }
+    return NULL;
+}
+
 static void *sym(void *handle, const char *name)
 {
     void *p = dlsym(handle, name);
@@ -127,12 +164,12 @@ int main(int argc, char **argv)
         return 78;
     }
 
-    lib = dlopen("/var/jb/usr/lib/libjailbreak.dylib", RTLD_NOW | RTLD_LOCAL);
-    if (!lib) lib = dlopen("/var/jb/basebin/libjailbreak.dylib", RTLD_NOW | RTLD_LOCAL);
+    lib = open_jailbreak_library();
     if (!lib)
     {
-        fprintf(stderr, "JUICE_LOWVA_HELPER_ERROR stage=dlopen error=%s\n",
-                dlerror() ?: "unknown");
+        fprintf(stderr,
+                "JUICE_LOWVA_HELPER_ERROR stage=dlopen error=libjailbreak unavailable "
+                "hint=install rootless jailbreak or set JUICE_JAILBREAK_LIB\n");
         return 69;
     }
 

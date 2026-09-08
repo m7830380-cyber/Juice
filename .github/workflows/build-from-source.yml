@@ -68,20 +68,16 @@ jobs:
         run: |
           mkdir -p dist
           make linux-x86_64-x64
-          cp -f "$JUICE_TIPA_OUTPUT" dist/Juice-FromSource-unsigned.ipa
           (cd dist && sha256sum Juice-FromSource-unsigned.tipa > Juice-FromSource-unsigned.tipa.sha256)
-          (cd dist && sha256sum Juice-FromSource-unsigned.ipa > Juice-FromSource-unsigned.ipa.sha256)
-          unzip -t dist/Juice-FromSource-unsigned.ipa >/dev/null
+          unzip -t dist/Juice-FromSource-unsigned.tipa >/dev/null
           ls -lh dist/
 
-      - name: Upload from-source IPA
+      - name: Upload from-source TIPA
         if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Juice-from-source-unsigned
           path: |
-            dist/Juice-FromSource-unsigned.ipa
-            dist/Juice-FromSource-unsigned.ipa.sha256
             dist/Juice-FromSource-unsigned.tipa
             dist/Juice-FromSource-unsigned.tipa.sha256
           if-no-files-found: error

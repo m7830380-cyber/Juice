@@ -22,6 +22,9 @@ dlls/cryptbase/aarch64-windows/cryptbase.dll
 dlls/cryptnet/aarch64-windows/cryptnet.dll
 dlls/cryptui/aarch64-windows/cryptui.dll
 dlls/d2d1/aarch64-windows/d2d1.dll
+# Debug helpers and desktop composition stubs used by installers and games.
+dlls/dbghelp/aarch64-windows/dbghelp.dll
+dlls/dwmapi/aarch64-windows/dwmapi.dll
 dlls/d3d10_1/aarch64-windows/d3d10_1.dll
 dlls/d3d10core/aarch64-windows/d3d10core.dll
 dlls/d3d11/aarch64-windows/d3d11.dll
@@ -50,6 +53,13 @@ dlls/msacm32/aarch64-windows/msacm32.dll
 dlls/mspatcha/aarch64-windows/mspatcha.dll
 dlls/mswsock/aarch64-windows/mswsock.dll
 dlls/msvcrt/aarch64-windows/msvcrt.dll
+# Visual C++ 2015+ UCRT forwarding targets and redistributable runtimes.
+dlls/msvcp140/aarch64-windows/msvcp140.dll
+dlls/msvcp140_1/aarch64-windows/msvcp140_1.dll
+dlls/msvcp140_2/aarch64-windows/msvcp140_2.dll
+dlls/vcruntime140/aarch64-windows/vcruntime140.dll
+dlls/vcruntime140_1/aarch64-windows/vcruntime140_1.dll
+dlls/concrt140/aarch64-windows/concrt140.dll
 dlls/mountmgr.sys/aarch64-windows/mountmgr.sys
 dlls/ncrypt/aarch64-windows/ncrypt.dll
 dlls/newdev/aarch64-windows/newdev.dll
