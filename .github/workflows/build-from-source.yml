@@ -1,0 +1,88 @@
+name: Build from source (Linux)
+
+# Full Wine/iOS cross-compile. Expect multi-hour runtime and large disk use.
+# Prefer the unsigned-IPA packaging workflow for release Payload builds.
+
+on:
+  workflow_dispatch:
+    inputs:
+      require_win32:
+        description: "Build WoW64/Win32 modules (JUICE_REQUIRE_WIN32)"
+        required: true
+        default: "1"
+        type: choice
+        options:
+          - "1"
+          - "0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: juice-from-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  linux-x86_64-x64:
+    name: make linux-x86_64-x64
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/share/boost "$AGENT_TOOLSDIRECTORY" || true
+          df -h
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+          fetch-depth: 1
+
+      - name: Restore tracked symlinks
+        run: bash scripts/restore-tracked-symlinks.sh
+
+      - name: Install host packages
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            build-essential clang lld cmake git python3 bison flex m4 curl file rsync \
+            zip unzip xz-utils tar pkg-config autoconf automake libtool \
+            libssl-dev libxml2-dev zlib1g-dev zstd
+
+      - name: Cache build deps and toolchains
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/deps
+            build/ios-toolchain
+            build/wine-tools-linux
+          key: juice-linux-deps-${{ hashFiles('config/**/*.env', 'scripts/fetch-*.sh', 'scripts/bootstrap-*.sh') }}
+          restore-keys: |
+            juice-linux-deps-
+
+      - name: Full Juice build
+        env:
+          JUICE_REQUIRE_WIN32: ${{ inputs.require_win32 }}
+          JUICE_TIPA_OUTPUT: ${{ github.workspace }}/dist/Juice-FromSource-unsigned.tipa
+        run: |
+          mkdir -p dist
+          make linux-x86_64-x64
+          cp -f "$JUICE_TIPA_OUTPUT" dist/Juice-FromSource-unsigned.ipa
+          (cd dist && sha256sum Juice-FromSource-unsigned.tipa > Juice-FromSource-unsigned.tipa.sha256)
+          (cd dist && sha256sum Juice-FromSource-unsigned.ipa > Juice-FromSource-unsigned.ipa.sha256)
+          unzip -t dist/Juice-FromSource-unsigned.ipa >/dev/null
+          ls -lh dist/
+
+      - name: Upload from-source IPA
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Juice-from-source-unsigned
+          path: |
+            dist/Juice-FromSource-unsigned.ipa
+            dist/Juice-FromSource-unsigned.ipa.sha256
+            dist/Juice-FromSource-unsigned.tipa
+            dist/Juice-FromSource-unsigned.tipa.sha256
+          if-no-files-found: error
+          retention-days: 14

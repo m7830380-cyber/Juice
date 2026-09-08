@@ -12,5 +12,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
+      - name: Restore tracked symlinks
+        run: bash scripts/restore-tracked-symlinks.sh
+      - name: Install verify tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq build-essential
       - name: Verify source tree and Wine patch
         run: make verify

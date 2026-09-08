@@ -4,12 +4,14 @@ REUSE_X64 ?= auto
 
 .DEFAULT_GOAL := all
 
-.PHONY: all verify preflight bootstrap pe-wrapper app launchers configure-wine build-wine runtime tipa install zip-test device source-archive installer-smokes arm64-smoke-build input-smoke-build input-smoke-device network-smokes graphics-smokes moltenvk x64-components x64-runtime x64-tipa win32-components win32-runtime win32-tipa win32-smoke-device reuse reuse-install verify-fex linux-x86_64 linux-x86_64-x64 linux-x86_64-deps linux-x86_64-sdk linux-x86_64-freetype linux-x86_64-network linux-x86_64-preflight linux-x86_64-ios-toolchain linux-x86_64-toolchain linux-x86_64-host-tools linux-x86_64-configure linux-x86_64-configure-pe linux-x86_64-build
+.PHONY: all verify preflight bootstrap pe-wrapper app launchers configure-wine build-wine runtime tipa install zip-test device source-archive installer-smokes arm64-smoke-build input-smoke-build input-smoke-device network-smokes graphics-smokes moltenvk x64-components x64-runtime x64-tipa win32-components win32-runtime win32-tipa win32-smoke-device reuse reuse-install verify-fex unsigned-ipa restore-symlinks linux-x86_64 linux-x86_64-x64 linux-x86_64-deps linux-x86_64-sdk linux-x86_64-freetype linux-x86_64-network linux-x86_64-preflight linux-x86_64-ios-toolchain linux-x86_64-toolchain linux-x86_64-host-tools linux-x86_64-configure linux-x86_64-configure-pe linux-x86_64-build
 
 # Primary build: complete Juice TIPA from an x86_64 Linux host.
 all: linux-x86_64-x64
 
 verify: ; $(BASH) scripts/verify-source.sh
+restore-symlinks: ; $(BASH) scripts/restore-tracked-symlinks.sh
+unsigned-ipa: ; $(BASH) scripts/package-unsigned-ipa.sh
 preflight: ; $(BASH) scripts/preflight-device.sh
 bootstrap: ; $(BASH) scripts/bootstrap-trust-carrier-device.sh
 pe-wrapper: ; $(BASH) scripts/build-pe-compiler-wrapper-device.sh
