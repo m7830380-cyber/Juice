@@ -42,12 +42,21 @@ jobs:
         with:
           lfs: true
           fetch-depth: 1
+      - name: Ensure Git LFS payloads
+        run: |
+          git lfs install --local
+          git lfs pull --include="releases/*"
+          ls -lh releases/*.tipa releases/*delta.tar.zst
       - name: Restore tracked symlinks
         run: bash scripts/restore-tracked-symlinks.sh
       - name: Install packaging tools
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq zstd zip unzip python3
+      - name: Free space before packaging
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
+          df -h
       - name: Build unsigned tipa and ipa
         run: make unsigned-ipa
       - name: Upload unsigned IPA artifacts

@@ -31,7 +31,8 @@ test -f "$DELTA" || { echo "Missing release delta: $DELTA" >&2; exit 2; }
 test -f "$DELTA_SUM" || { echo "Missing delta checksum: $DELTA_SUM" >&2; exit 2; }
 
 echo "JUICE_UNSIGNED_IPA_START version=$VERSION"
-(cd "$(dirname "$DELTA")" && sha256sum -c "$(basename "$DELTA_SUM")")
+# Checksum manifests store repo-relative paths (releases/...), so verify from ROOT.
+(cd "$ROOT" && sha256sum -c "$DELTA_SUM")
 
 rm -rf "$STAGE"
 mkdir -p "$STAGE" "$DIST"
