@@ -86,6 +86,13 @@ cp "$HYBRID/dlls/ntdll/aarch64-windows/ntdll.dll" \
 mkdir -p "$GRAPE/build/wine-ios/dlls/apisetschema/aarch64-windows"
 cp "$HYBRID/dlls/apisetschema/aarch64-windows/apisetschema.dll" \
   "$GRAPE/build/wine-ios/dlls/apisetschema/aarch64-windows/apisetschema.dll"
+# vcruntime140_1 is only built for x64/ARM64EC in Wine, not native ARM64 Grape.
+# Stage it here for translated AMD64 apps (e.g. x64 Blender via FEX).
+if test -s "$HYBRID/dlls/vcruntime140_1/aarch64-windows/vcruntime140_1.dll"; then
+  cp "$HYBRID/dlls/vcruntime140_1/aarch64-windows/vcruntime140_1.dll" \
+    "$GRAPE/runtime/lib/wine/aarch64-windows/vcruntime140_1.dll"
+  echo "JUICE_X64_VCRUNTIME140_1_STAGED path=$GRAPE/runtime/lib/wine/aarch64-windows/vcruntime140_1.dll"
+fi
 cp "$FEX_DLL" "$GRAPE/runtime/lib/wine/aarch64-windows/libarm64ecfex.dll"
 cp "$FEX_DLL" "$GRAPE/prefix-template/drive_c/windows/system32/libarm64ecfex.dll"
 cp "$GRAPE/runtime/lib/wine/aarch64-windows/JuiceGUI.exe" \
