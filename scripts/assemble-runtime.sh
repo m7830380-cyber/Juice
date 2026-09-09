@@ -133,7 +133,6 @@ for build_tree_target in \
   dlls/msvcp140_1/aarch64-windows/msvcp140_1.dll \
   dlls/msvcp140_2/aarch64-windows/msvcp140_2.dll \
   dlls/vcruntime140/aarch64-windows/vcruntime140.dll \
-  dlls/vcruntime140_1/aarch64-windows/vcruntime140_1.dll \
   dlls/concrt140/aarch64-windows/concrt140.dll \
   dlls/dbghelp/aarch64-windows/dbghelp.dll \
   dlls/dwmapi/aarch64-windows/dwmapi.dll

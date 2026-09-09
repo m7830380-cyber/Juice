@@ -1,7 +1,7 @@
 name: Build from source (Linux)
 
-# Full Wine/iOS cross-compile. Expect multi-hour runtime and large disk use.
-# Prefer the unsigned-IPA packaging workflow for release Payload builds.
+# Full Wine/iOS cross-compile producing a TIPA with the current source tree.
+# This is the only CI path that includes runtime fixes from the repository.
 
 on:
   workflow_dispatch:
@@ -14,6 +14,19 @@ on:
         options:
           - "1"
           - "0"
+  push:
+    branches:
+      - main
+      - build/unsigned-ipa
+    paths:
+      - config/runtime-modules.txt
+      - scripts/**
+      - wine/**
+      - app/**
+      - launcher/**
+      - toolchain/**
+      - Makefile
+      - .github/workflows/build-from-source.yml
 
 permissions:
   contents: read
@@ -57,13 +70,14 @@ jobs:
             build/deps
             build/ios-toolchain
             build/wine-tools-linux
-          key: juice-linux-deps-${{ hashFiles('config/**/*.env', 'scripts/fetch-*.sh', 'scripts/bootstrap-*.sh') }}
+          key: juice-linux-deps-${{ hashFiles('config/runtime-modules.txt', 'config/**/*.env', 'scripts/fetch-*.sh', 'scripts/bootstrap-*.sh') }}
           restore-keys: |
             juice-linux-deps-
 
       - name: Full Juice build
         env:
-          JUICE_REQUIRE_WIN32: ${{ inputs.require_win32 }}
+          JUICE_REQUIRE_WIN32: ${{ github.event_name == 'workflow_dispatch' && inputs.require_win32 || '1' }}
+          JUICE_RECONFIGURE: 1
           JUICE_TIPA_OUTPUT: ${{ github.workspace }}/dist/Juice-FromSource-unsigned.tipa
         run: |
           mkdir -p dist

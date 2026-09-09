@@ -1,18 +1,10 @@
-name: Build unsigned IPA
+name: Repackage legacy release delta
+
+# Manual only. This rebuilds the old RC1+delta TIPA and does NOT include
+# current source/runtime fixes. Use "Build from source (Linux)" instead.
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - build/unsigned-ipa
-      - main
-    paths:
-      - .github/workflows/build-unsigned-ipa.yml
-      - scripts/package-unsigned-ipa.sh
-      - scripts/juice-release-delta.py
-      - scripts/restore-tracked-symlinks.sh
-      - releases/**
-      - Makefile
 
 permissions:
   contents: read
@@ -33,8 +25,8 @@ jobs:
       - name: Verify source tree
         run: make verify
 
-  unsigned-ipa:
-    name: Package unsigned IPA
+  legacy-tipa:
+    name: Package legacy delta TIPA
     needs: verify
     runs-on: ubuntu-latest
     steps:
@@ -57,14 +49,14 @@ jobs:
         run: |
           sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc || true
           df -h
-      - name: Build unsigned tipa
+      - name: Build legacy delta tipa
         run: make unsigned-ipa
-      - name: Upload unsigned TIPA artifact
+      - name: Upload legacy TIPA artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Juice-unsigned-tipa
+          name: Juice-legacy-delta-tipa
           path: |
             dist/Juice-*-unsigned.tipa
             dist/Juice-*-unsigned.tipa.sha256
           if-no-files-found: error
-          retention-days: 30
+          retention-days: 7
